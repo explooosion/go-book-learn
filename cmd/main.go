@@ -18,6 +18,7 @@ func main() {
 
 	// 登入路由
 	r.POST("/login", loginHandler)
+	r.POST("/logout", logoutHandler)
 
 	r.Run(":8080")
 }
@@ -43,4 +44,11 @@ func loginHandler(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "帳號或密碼錯誤，你是故意惹本小姐生氣嗎？"})
 	}
+}
+
+// 登出處理函式
+func logoutHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "你已經成功登出囉～下次再來找本小姐吧！",
+	})
 }

@@ -5,7 +5,7 @@ This is a simple API server built with Go and the Gin framework for learning pur
 ## 📌 Features
 
 - [x] Basic HTTP Server setup
-- [ ] User Login and Logout
+- [x] User Login and Logout
 - [ ] Products CRUD API
 
 ## 🚀 Getting Started
