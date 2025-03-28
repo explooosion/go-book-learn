@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -144,7 +145,7 @@ func deleteProduct(c *gin.Context) {
 
 	for i, p := range products {
 		if p.ID == id {
-			products = append(products[:i], products[i+1:]...)
+			products = slices.Delete(products, i, i+1)
 			c.JSON(http.StatusOK, gin.H{"message": "產品已成功刪除～下次要小心一點喔！"})
 			return
 		}
