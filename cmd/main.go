@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"slices"
 	"strconv"
@@ -53,21 +54,25 @@ func loginHandler(c *gin.Context) {
 
 	// 綁定 JSON 到 loginData
 	if err := c.ShouldBindJSON(&loginData); err != nil {
+		log.Printf("[LOGIN ERROR] Binding JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的資料有誤，重新檢查一下吧！"})
 		return
 	}
 
 	// 模擬驗證帳號密碼
 	if loginData.Username == "robby" && loginData.Password == "secret" {
+		log.Printf("[LOGIN SUCCESS] User %s logged in successfully", loginData.Username)
 		c.JSON(http.StatusOK, gin.H{"message": "登入成功～你應該感到榮幸，這可是本小姐批准的喔！"})
 
 	} else {
+		log.Printf("[LOGIN FAILED] Invalid credentials for user %s", loginData.Username)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "帳號或密碼錯誤，你是故意惹本小姐生氣嗎？"})
 	}
 }
 
 // 登出處理函式
 func logoutHandler(c *gin.Context) {
+	log.Println("[LOGOUT] User logged out")
 	c.JSON(http.StatusOK, gin.H{
 		"message": "你已經成功登出囉～下次再來找本小姐吧！",
 	})
@@ -75,6 +80,7 @@ func logoutHandler(c *gin.Context) {
 
 // 取得所有產品
 func getProducts(c *gin.Context) {
+	log.Println("[GET PRODUCTS] Fetching all products")
 	c.JSON(http.StatusOK, products)
 }
 
@@ -83,15 +89,18 @@ func getProductByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		log.Printf("[GET PRODUCT ERROR] Invalid product ID: %s", idStr)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
 		return
 	}
 	for _, p := range products {
 		if p.ID == id {
+			log.Printf("[GET PRODUCT] Found product with ID %d", id)
 			c.JSON(http.StatusOK, p)
 			return
 		}
 	}
+	log.Printf("[GET PRODUCT ERROR] Product with ID %d not found", id)
 	c.JSON(http.StatusNotFound, gin.H{"error": "找不到該產品，難道是本小姐不小心賣掉了嗎？"})
 }
 
@@ -99,12 +108,14 @@ func getProductByID(c *gin.Context) {
 func createProduct(c *gin.Context) {
 	var newProduct Product
 	if err := c.ShouldBindJSON(&newProduct); err != nil {
+		log.Printf("[CREATE PRODUCT ERROR] Binding JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤，請檢查一下！"})
 		return
 	}
 	newProduct.ID = nextID
 	nextID++
 	products = append(products, newProduct)
+	log.Printf("[CREATE PRODUCT] New product added with ID %d", newProduct.ID)
 	c.JSON(http.StatusCreated, newProduct)
 }
 
@@ -113,12 +124,14 @@ func updateProduct(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		log.Printf("[UPDATE PRODUCT ERROR] Invalid product ID: %s", idStr)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
 		return
 	}
 
 	var updatedProduct Product
 	if err := c.ShouldBindJSON(&updatedProduct); err != nil {
+		log.Printf("[UPDATE PRODUCT ERROR] Binding JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤，請檢查一下！"})
 		return
 	}
@@ -127,10 +140,12 @@ func updateProduct(c *gin.Context) {
 		if p.ID == id {
 			updatedProduct.ID = p.ID // 保留原有的 ID
 			products[i] = updatedProduct
+			log.Printf("[UPDATE PRODUCT] Product with ID %d updated", id)
 			c.JSON(http.StatusOK, updatedProduct)
 			return
 		}
 	}
+	log.Printf("[UPDATE PRODUCT ERROR] Product with ID %d not found", id)
 	c.JSON(http.StatusNotFound, gin.H{"error": "找不到該產品，難道是本小姐不小心賣掉了嗎？"})
 }
 
@@ -139,16 +154,20 @@ func deleteProduct(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		log.Printf("[DELETE PRODUCT ERROR] Invalid product ID: %s", idStr)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
 		return
 	}
 
 	for i, p := range products {
 		if p.ID == id {
+			// 使用 slices.Delete (需 Go 1.21+)
 			products = slices.Delete(products, i, i+1)
+			log.Printf("[DELETE PRODUCT] Product with ID %d deleted", id)
 			c.JSON(http.StatusOK, gin.H{"message": "產品已成功刪除～下次要小心一點喔！"})
 			return
 		}
 	}
+	log.Printf("[DELETE PRODUCT ERROR] Product with ID %d not found", id)
 	c.JSON(http.StatusNotFound, gin.H{"error": "找不到該產品，難道是本小姐不小心賣掉了嗎？"})
 }
