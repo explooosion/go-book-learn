@@ -2,16 +2,28 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Product 代表一個簡單的產品資料結構
+type Product struct {
+	ID    int     `json:"id"`
+	Name  string  `json:"name" binding:"required"`
+	Price float64 `json:"price" binding:"required"`
+}
+
+// 全域變數模擬資料庫
+var products []Product
+var nextID = 1
 
 func main() {
 	r := gin.Default()
 
 	// 根路由
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"message": "歡迎來到 Go 的 API 世界，這可是本小姐特別準備的喔！",
 		})
 	})
@@ -19,6 +31,13 @@ func main() {
 	// 登入路由
 	r.POST("/login", loginHandler)
 	r.POST("/logout", logoutHandler)
+
+	// 產品 CRUD 路由
+	r.GET("/products", getProducts)          // 取得所有產品
+	r.GET("/products/:id", getProductByID)   // 依據 ID 取得單一產品
+	r.POST("/products", createProduct)       // 新增產品
+	r.PUT("/products/:id", updateProduct)    // 更新產品
+	r.DELETE("/products/:id", deleteProduct) // 刪除產品
 
 	r.Run(":8080")
 }
@@ -51,4 +70,84 @@ func logoutHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "你已經成功登出囉～下次再來找本小姐吧！",
 	})
+}
+
+// 取得所有產品
+func getProducts(c *gin.Context) {
+	c.JSON(http.StatusOK, products)
+}
+
+// 依據 ID 取得單一產品
+func getProductByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
+		return
+	}
+	for _, p := range products {
+		if p.ID == id {
+			c.JSON(http.StatusOK, p)
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "找不到該產品，難道是本小姐不小心賣掉了嗎？"})
+}
+
+// 新增產品
+func createProduct(c *gin.Context) {
+	var newProduct Product
+	if err := c.ShouldBindJSON(&newProduct); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤，請檢查一下！"})
+		return
+	}
+	newProduct.ID = nextID
+	nextID++
+	products = append(products, newProduct)
+	c.JSON(http.StatusCreated, newProduct)
+}
+
+// 更新產品
+func updateProduct(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
+		return
+	}
+
+	var updatedProduct Product
+	if err := c.ShouldBindJSON(&updatedProduct); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤，請檢查一下！"})
+		return
+	}
+
+	for i, p := range products {
+		if p.ID == id {
+			updatedProduct.ID = p.ID // 保留原有的 ID
+			products[i] = updatedProduct
+			c.JSON(http.StatusOK, updatedProduct)
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "找不到該產品，難道是本小姐不小心賣掉了嗎？"})
+}
+
+// 刪除產品
+func deleteProduct(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
+		return
+	}
+
+	for i, p := range products {
+		if p.ID == id {
+			products = append(products[:i], products[i+1:]...)
+			c.JSON(http.StatusOK, gin.H{"message": "產品已成功刪除～下次要小心一點喔！"})
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "找不到該產品，難道是本小姐不小心賣掉了嗎？"})
 }
