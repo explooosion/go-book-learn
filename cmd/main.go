@@ -6,21 +6,20 @@ import (
 	"slices"
 	"strconv"
 
+	"go-book-learn/internal/db"
+	"go-book-learn/internal/models"
+
 	"github.com/gin-gonic/gin"
 )
 
-// Product 代表一個簡單的產品資料結構
-type Product struct {
-	ID    int     `json:"id"`
-	Name  string  `json:"name" binding:"required"`
-	Price float64 `json:"price" binding:"required"`
-}
-
 // 全域變數模擬資料庫
-var products []Product
+var products []models.Product
 var nextID = 1
 
 func main() {
+	// 呼叫資料庫初始化
+	db.InitDB()
+
 	r := gin.Default()
 
 	// 根路由
@@ -106,7 +105,7 @@ func getProductByID(c *gin.Context) {
 
 // 新增產品
 func createProduct(c *gin.Context) {
-	var newProduct Product
+	var newProduct models.Product
 	if err := c.ShouldBindJSON(&newProduct); err != nil {
 		log.Printf("[CREATE PRODUCT ERROR] Binding JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤，請檢查一下！"})
@@ -129,7 +128,7 @@ func updateProduct(c *gin.Context) {
 		return
 	}
 
-	var updatedProduct Product
+	var updatedProduct models.Product
 	if err := c.ShouldBindJSON(&updatedProduct); err != nil {
 		log.Printf("[UPDATE PRODUCT ERROR] Binding JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤，請檢查一下！"})
