@@ -7,7 +7,6 @@ function App() {
   const [user, setUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
 
-  // 當元件載入時，從 localStorage 嘗試讀取 token
   useEffect(() => {
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
@@ -27,6 +26,11 @@ function App() {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     setUser(null);
+  };
+
+  const handleTokenRefresh = (newToken) => {
+    localStorage.setItem("token", newToken);
+    setUser((prev) => ({ ...prev, token: newToken }));
   };
 
   return (
@@ -58,7 +62,7 @@ function App() {
           onCancel={() => setShowLogin(false)}
         />
       ) : (
-        <ProductManager user={user} />
+        <ProductManager user={user} onTokenRefresh={handleTokenRefresh} />
       )}
     </div>
   );

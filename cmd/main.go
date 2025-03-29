@@ -63,9 +63,58 @@ func main() {
 		protected.POST("/products", createProduct)       // 新增產品
 		protected.PUT("/products/:id", updateProduct)    // 更新產品
 		protected.DELETE("/products/:id", deleteProduct) // 刪除產品
+		protected.POST("/refresh", refreshHandler)       // 刷新 token
 	}
 
 	r.Run(":8080")
+}
+
+func refreshHandler(c *gin.Context) {
+	// 取得 Authorization header 中的 token
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未提供授權資訊"})
+		return
+	}
+	var tokenString string
+	_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "授權資訊格式錯誤"})
+		return
+	}
+
+	// 解析 token
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "無效或已過期的 token"})
+		return
+	}
+
+	// 若 token 即將過期（例如在10分鐘內），就刷新 token
+	// 這裡你可以自訂刷新條件，以下為示例：假設 token 還剩下10分鐘內就刷新
+	if time.Until(claims.ExpiresAt.Time) > 10*time.Minute {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token 尚未到刷新時間"})
+		return
+	}
+
+	// 生成新 token，延長有效期
+	expirationTime := time.Now().Add(1 * time.Hour)
+	claims.ExpiresAt = jwt.NewNumericDate(expirationTime)
+	claims.IssuedAt = jwt.NewNumericDate(time.Now())
+
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	newTokenString, err := newToken.SignedString(jwtKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token 更新失敗"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": newTokenString,
+	})
 }
 
 // authMiddleware 檢查請求中是否攜帶有效的 JWT Token
