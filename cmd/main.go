@@ -1,21 +1,31 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"slices"
 	"strconv"
+	"time"
 
 	"go-book-learn/internal/db"
 	"go-book-learn/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // 全域變數模擬資料庫
 var products = []models.Product{}
 var nextID = 1
+
+var jwtKey = []byte("secret")
+
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
 
 func initLoggin() {
 	f, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -40,18 +50,56 @@ func main() {
 		})
 	})
 
-	// 登入路由
+	// 不需要認證的路由
 	r.POST("/login", loginHandler)
 	r.POST("/logout", logoutHandler)
+	r.GET("/products", getProducts)        // 取得所有產品
+	r.GET("/products/:id", getProductByID) // 依據 ID 取得單一產品
 
-	// 產品 CRUD 路由
-	r.GET("/products", getProducts)          // 取得所有產品
-	r.GET("/products/:id", getProductByID)   // 依據 ID 取得單一產品
-	r.POST("/products", createProduct)       // 新增產品
-	r.PUT("/products/:id", updateProduct)    // 更新產品
-	r.DELETE("/products/:id", deleteProduct) // 刪除產品
+	// 需要驗證的路由群組
+	protected := r.Group("/")
+	protected.Use(authMiddleware())
+	{
+		protected.POST("/products", createProduct)       // 新增產品
+		protected.PUT("/products/:id", updateProduct)    // 更新產品
+		protected.DELETE("/products/:id", deleteProduct) // 刪除產品
+	}
 
 	r.Run(":8080")
+}
+
+// authMiddleware 檢查請求中是否攜帶有效的 JWT Token
+func authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 從 Header 中取得 Authorization 欄位
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "未提供授權資訊"})
+			return
+		}
+
+		// 解析 Authorization 標頭，格式應為 "Bearer token"
+		var tokenString string
+		_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "授權資訊格式錯誤"})
+			return
+		}
+
+		// 使用 JWT 套件解析 Token
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "無效或已過期的 token"})
+			return
+		}
+
+		// 將用戶名稱存入 Context 供後續使用
+		c.Set("username", claims.Username)
+		c.Next()
+	}
 }
 
 // 登入處理函式
@@ -71,8 +119,27 @@ func loginHandler(c *gin.Context) {
 
 	// 模擬驗證帳號密碼
 	if loginData.Username == "robby" && loginData.Password == "secret" {
+		expirationTime := time.Now().Add(5 * time.Minute)
+		claims := &Claims{
+			Username: loginData.Username,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(expirationTime),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString(jwtKey)
+		if err != nil {
+			log.Printf("[LOGIN ERROR] Token signing failed: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "伺服器內部錯誤，請稍後再試！"})
+			return
+		}
+
 		log.Printf("[LOGIN SUCCESS] User %s logged in successfully", loginData.Username)
-		c.JSON(http.StatusOK, gin.H{"message": "登入成功～你應該感到榮幸，這可是本小姐批准的喔！"})
+		c.JSON(http.StatusOK, gin.H{
+			"message": "登入成功～你應該感到榮幸，這可是本小姐批准的喔！",
+			"token":   tokenString,
+		})
 
 	} else {
 		log.Printf("[LOGIN FAILED] Invalid credentials for user %s", loginData.Username)
