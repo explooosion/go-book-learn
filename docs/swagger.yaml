@@ -1,0 +1,301 @@
+basePath: /
+definitions:
+  handlers.LoginRequest:
+    properties:
+      password:
+        description: 密碼
+        type: string
+      username:
+        description: 使用者名稱
+        type: string
+    type: object
+  handlers.LoginResponse:
+    properties:
+      message:
+        description: 成功訊息
+        type: string
+      role:
+        description: 使用者角色
+        type: string
+      token:
+        description: JWT Token
+        type: string
+    type: object
+  handlers.LogoutResponse:
+    properties:
+      message:
+        description: 登出成功訊息
+        type: string
+    type: object
+  handlers.RefreshResponse:
+    properties:
+      token:
+        description: 新生成的 JWT Token
+        type: string
+    type: object
+  models.Product:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+    required:
+    - name
+    - price
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is a sample server for Go Book Learn.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Go Book Learn API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: 驗證用戶的帳號與密碼，成功後返回 JWT token 與角色資訊
+      parameters:
+      - description: 登入資訊
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 用戶登入
+      tags:
+      - 認證
+  /logout:
+    post:
+      description: 執行登出操作，返回登出成功訊息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LogoutResponse'
+      summary: 用戶登出
+      tags:
+      - 認證
+  /products:
+    get:
+      description: 返回所有產品列表，這是公開 API
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Product'
+            type: array
+      summary: 取得所有產品
+      tags:
+      - 產品
+    post:
+      consumes:
+      - application/json
+      description: 新增一個產品。此操作需要 admin 權限（JWT Token）
+      parameters:
+      - description: 產品資訊
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/models.Product'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 新增產品
+      tags:
+      - 產品
+  /products/{id}:
+    delete:
+      description: 根據產品 ID 刪除產品資料（需要 admin 權限）
+      parameters:
+      - description: 產品 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 刪除產品
+      tags:
+      - 產品
+    get:
+      description: 根據產品 ID 返回單一產品資料
+      parameters:
+      - description: 產品 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 取得單一產品
+      tags:
+      - 產品
+    put:
+      consumes:
+      - application/json
+      description: 根據產品 ID 更新產品資料，需提供完整資料（需要 admin 權限）
+      parameters:
+      - description: 產品 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新後的產品資料
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/models.Product'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 更新產品
+      tags:
+      - 產品
+  /refresh:
+    post:
+      description: 當 JWT Token 即將過期時，刷新生成新的 Token
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.RefreshResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 刷新 JWT Token
+      tags:
+      - 認證
+swagger: "2.0"

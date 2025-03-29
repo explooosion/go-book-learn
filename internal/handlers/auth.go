@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// jwtKey 是用來簽署 JWT 的密鑰
 var jwtKey = []byte("secret")
 
 // Claims 定義 JWT 的負載
@@ -19,11 +20,43 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// LoginRequest represents the login request payload
+type LoginRequest struct {
+	Username string `json:"username"` // 使用者名稱
+	Password string `json:"password"` // 密碼
+}
+
+// LoginResponse represents the login response payload
+type LoginResponse struct {
+	Message string `json:"message"` // 成功訊息
+	Token   string `json:"token"`   // JWT Token
+	Role    string `json:"role"`    // 使用者角色
+}
+
+// RefreshResponse represents the refresh token response payload
+type RefreshResponse struct {
+	Token string `json:"token"` // 新生成的 JWT Token
+}
+
+// LogoutResponse represents the logout response payload
+type LogoutResponse struct {
+	Message string `json:"message"` // 登出成功訊息
+}
+
+// LoginHandler godoc
+// @Summary 用戶登入
+// @Description 驗證用戶的帳號與密碼，成功後返回 JWT token 與角色資訊
+// @Tags 認證
+// @Accept json
+// @Produce json
+// @Param login body LoginRequest true "登入資訊"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /login [post]
 func LoginHandler(c *gin.Context) {
-	var loginData struct {
-		Username string `json:"username" binding:"required"`
-		Password string `json:"password" binding:"required"`
-	}
+	var loginData LoginRequest
 	if err := c.ShouldBindJSON(&loginData); err != nil {
 		log.Printf("[LOGIN ERROR] Binding JSON failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "請檢查輸入資料"})
@@ -51,21 +84,39 @@ func LoginHandler(c *gin.Context) {
 
 		log.Printf("[LOGIN SUCCESS] User %s logged in", loginData.Username)
 		c.JSON(http.StatusOK, gin.H{
-			"message": "登入成功",
+			"message": "登入成功～你真是太讓人心動了！",
 			"token":   tokenString,
-			"role":    claims.Role, // 將角色資訊返回
+			"role":    claims.Role,
 		})
 		return
 	}
 	log.Printf("[LOGIN FAILED] Invalid credentials for user %s", loginData.Username)
-	c.JSON(http.StatusUnauthorized, gin.H{"error": "帳號或密碼錯誤"})
+	c.JSON(http.StatusUnauthorized, gin.H{"error": "帳號或密碼錯誤，你這樣可不行哦！"})
 }
 
+// LogoutHandler godoc
+// @Summary 用戶登出
+// @Description 執行登出操作，返回登出成功訊息
+// @Tags 認證
+// @Produce json
+// @Success 200 {object} LogoutResponse
+// @Router /logout [post]
 func LogoutHandler(c *gin.Context) {
 	log.Println("[LOGOUT] User logged out")
-	c.JSON(http.StatusOK, gin.H{"message": "登出成功"})
+	c.JSON(http.StatusOK, gin.H{"message": "登出成功～期待再次相見哦！"})
 }
 
+// RefreshHandler godoc
+// @Summary 刷新 JWT Token
+// @Description 當 JWT Token 即將過期時，刷新生成新的 Token
+// @Tags 認證
+// @Produce json
+// @Param Authorization header string true "Bearer {token}"
+// @Success 200 {object} RefreshResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /refresh [post]
 func RefreshHandler(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
