@@ -24,6 +24,7 @@ var jwtKey = []byte("secret")
 
 type Claims struct {
 	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -60,10 +61,15 @@ func main() {
 	protected := r.Group("/")
 	protected.Use(authMiddleware())
 	{
-		protected.POST("/products", createProduct)       // 新增產品
-		protected.PUT("/products/:id", updateProduct)    // 更新產品
-		protected.DELETE("/products/:id", deleteProduct) // 刪除產品
-		protected.POST("/refresh", refreshHandler)       // 刷新 token
+		admin := protected.Group("/")
+		admin.Use(roleMiddleware("admin"))
+		{
+			protected.POST("/products", createProduct)       // 新增產品
+			protected.PUT("/products/:id", updateProduct)    // 更新產品
+			protected.DELETE("/products/:id", deleteProduct) // 刪除產品
+			protected.POST("/refresh", refreshHandler)       // 刷新 token
+
+		}
 	}
 
 	r.Run(":8080")
@@ -151,6 +157,36 @@ func authMiddleware() gin.HandlerFunc {
 	}
 }
 
+func roleMiddleware(requiredRole string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims := &Claims{}
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "未提供授權資訊"})
+			return
+		}
+		var tokenString string
+		_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "授權資訊格式錯誤"})
+			return
+		}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "無效或已過期的 token"})
+			return
+		}
+		// 檢查角色是否符合要求
+		if claims.Role != requiredRole {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "權限不足"})
+			return
+		}
+		c.Next()
+	}
+}
+
 // 登入處理函式
 func loginHandler(c *gin.Context) {
 	// 接收使用者傳入的 JSON 資料
@@ -171,6 +207,7 @@ func loginHandler(c *gin.Context) {
 		expirationTime := time.Now().Add(5 * time.Minute)
 		claims := &Claims{
 			Username: loginData.Username,
+			Role:     "admin", // 加上這一行，指定角色
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(expirationTime),
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -188,6 +225,7 @@ func loginHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "登入成功～你應該感到榮幸，這可是本小姐批准的喔！",
 			"token":   tokenString,
+			"role":    claims.Role,
 		})
 
 	} else {

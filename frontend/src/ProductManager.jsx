@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 
 function ProductManager({ user, onTokenRefresh }) {
-  // 使用安全解構方式取 token，若 user 為 null則 token 為 undefined
+  // 安全解構 token，如果 user 為 null，token 會是 undefined
   const token = user?.token;
   const [products, setProducts] = useState([]);
   const [newProduct, setNewProduct] = useState({ name: "", price: "" });
@@ -124,6 +124,43 @@ function ProductManager({ user, onTokenRefresh }) {
           刷新 Token
         </button>
       </div>
+
+      {token ? (
+        <div className="bg-white p-4 rounded shadow mb-6">
+          <h2 className="text-xl font-semibold mb-2">新增產品</h2>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              placeholder="名稱"
+              value={newProduct.name}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, name: e.target.value })
+              }
+              className="border p-2 rounded w-full"
+            />
+            <input
+              type="number"
+              placeholder="價格"
+              value={newProduct.price}
+              onChange={(e) =>
+                setNewProduct({ ...newProduct, price: e.target.value })
+              }
+              className="border p-2 rounded w-full"
+            />
+            <button
+              onClick={handleCreateProduct}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              新增
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-6 text-center text-gray-600">
+          請登入以進行新增、編輯及刪除操作
+        </p>
+      )}
+
       <div className="bg-white p-4 rounded shadow">
         <h2 className="text-xl font-semibold mb-2">產品列表</h2>
         {products.length === 0 ? (
@@ -178,7 +215,7 @@ function ProductManager({ user, onTokenRefresh }) {
                       {product.name} - ${product.price}
                     </span>
                     <div className="space-x-2">
-                      {token ? (
+                      {token && user.role === "admin" ? (
                         <>
                           <button
                             onClick={() => handleEditProduct(product)}

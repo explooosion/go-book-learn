@@ -12,24 +12,26 @@ import "./App.css";
 function App() {
   const [user, setUser] = useState(null);
 
-  // 當元件載入時，從 localStorage 嘗試讀取 token 與 username
   useEffect(() => {
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
+    const role = localStorage.getItem("role");
     if (token && username) {
-      setUser({ token, username });
+      setUser({ token, username, role });
     }
   }, []);
 
   const handleLoginSuccess = (loginData) => {
     localStorage.setItem("token", loginData.token);
     localStorage.setItem("username", loginData.username);
+    localStorage.setItem("role", loginData.role);
     setUser(loginData);
   };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
+    localStorage.removeItem("role");
     setUser(null);
   };
 
@@ -44,7 +46,9 @@ function App() {
         <h1 className="text-xl font-bold">產品管理系統</h1>
         {user ? (
           <div>
-            <span>歡迎，{user.username}</span>
+            <span>
+              歡迎，{user.username + (user.role ? ` (${user.role})` : "")}
+            </span>
             <button
               onClick={handleLogout}
               className="bg-red-500 px-3 py-1 rounded ml-4"

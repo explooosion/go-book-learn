@@ -17,7 +17,7 @@ function Login({ onLoginSuccess }) {
       .then((res) => res.json())
       .then((data) => {
         if (data.token) {
-          onLoginSuccess({ token: data.token, username });
+          onLoginSuccess({ ...data, username });
           navigate("/products"); // 登入成功後導向產品頁面
         } else {
           setError(data.error || "登入失敗");
