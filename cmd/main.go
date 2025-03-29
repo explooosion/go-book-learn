@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 
@@ -16,7 +17,17 @@ import (
 var products []models.Product
 var nextID = 1
 
+func initLoggin() {
+	f, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("failed to open log file: %v", err)
+	}
+	log.SetOutput(f)
+}
+
 func main() {
+	// 初始化日誌輸出到檔案
+	initLoggin()
 	// 呼叫資料庫初始化
 	db.InitDB()
 
