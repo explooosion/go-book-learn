@@ -14,7 +14,7 @@ import (
 )
 
 // 全域變數模擬資料庫
-var products []models.Product
+var products = []models.Product{}
 var nextID = 1
 
 func initLoggin() {
