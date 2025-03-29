@@ -1,13 +1,14 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate(); // 使用這個 Hook 來導航
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // 呼叫後端 /login API (不使用 JWT，僅檢查登入成功與否)
     fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -15,9 +16,9 @@ function Login({ onLoginSuccess }) {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.token || data.message) {
-          // 當登入成功後，呼叫 onLoginSuccess 傳入登入資訊
-          onLoginSuccess(data);
+        if (data.token) {
+          onLoginSuccess({ token: data.token, username });
+          navigate("/products"); // 登入成功後導向產品頁面
         } else {
           setError(data.error || "登入失敗");
         }

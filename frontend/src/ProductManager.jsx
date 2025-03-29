@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 
 function ProductManager({ user, onTokenRefresh }) {
+  // 使用安全解構方式取 token，若 user 為 null則 token 為 undefined
   const token = user?.token;
-
   const [products, setProducts] = useState([]);
   const [newProduct, setNewProduct] = useState({ name: "", price: "" });
   const [editingProduct, setEditingProduct] = useState(null);
 
-  // 取得所有產品 (公開 API)
+  // 取得所有產品（公開 API）
   const fetchProducts = () => {
     fetch("/api/products")
       .then((res) => res.json())
@@ -19,8 +19,12 @@ function ProductManager({ user, onTokenRefresh }) {
     fetchProducts();
   }, []);
 
-  // 新增產品 (需 Token)
+  // 新增產品 (需要 token)
   const handleCreateProduct = () => {
+    if (!token) {
+      alert("請先登入以新增產品！");
+      return;
+    }
     fetch("/api/products", {
       method: "POST",
       headers: {
@@ -40,8 +44,12 @@ function ProductManager({ user, onTokenRefresh }) {
       .catch((err) => console.error("Error creating product:", err));
   };
 
-  // 刪除產品 (需 Token)
+  // 刪除產品 (需要 token)
   const handleDeleteProduct = (id) => {
+    if (!token) {
+      alert("請先登入以刪除產品！");
+      return;
+    }
     fetch(`/api/products/${id}`, {
       method: "DELETE",
       headers: {
@@ -53,11 +61,15 @@ function ProductManager({ user, onTokenRefresh }) {
       .catch((err) => console.error("Error deleting product:", err));
   };
 
-  // 進入編輯模式
+  // 編輯產品：進入編輯模式
   const handleEditProduct = (product) => setEditingProduct(product);
 
-  // 更新產品 (需 Token)
+  // 更新產品 (需要 token)
   const handleUpdateProduct = () => {
+    if (!token) {
+      alert("請先登入以更新產品！");
+      return;
+    }
     fetch(`/api/products/${editingProduct.id}`, {
       method: "PUT",
       headers: {
@@ -79,6 +91,10 @@ function ProductManager({ user, onTokenRefresh }) {
 
   // 刷新 JWT Token
   const handleRefreshToken = () => {
+    if (!token) {
+      alert("請先登入以刷新 Token！");
+      return;
+    }
     fetch("/api/refresh", {
       method: "POST",
       headers: {
@@ -89,7 +105,6 @@ function ProductManager({ user, onTokenRefresh }) {
       .then((res) => res.json())
       .then((data) => {
         if (data.token) {
-          // 通知上層更新 token
           onTokenRefresh(data.token);
         } else {
           console.error("Token refresh error:", data.error);
@@ -109,45 +124,6 @@ function ProductManager({ user, onTokenRefresh }) {
           刷新 Token
         </button>
       </div>
-
-      {token ? (
-        <>
-          <div className="bg-white p-4 rounded shadow mb-6">
-            <h2 className="text-xl font-semibold mb-2">新增產品</h2>
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                placeholder="名稱"
-                value={newProduct.name}
-                onChange={(e) =>
-                  setNewProduct({ ...newProduct, name: e.target.value })
-                }
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="number"
-                placeholder="價格"
-                value={newProduct.price}
-                onChange={(e) =>
-                  setNewProduct({ ...newProduct, price: e.target.value })
-                }
-                className="border p-2 rounded w-full"
-              />
-              <button
-                onClick={handleCreateProduct}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                新增
-              </button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <p className="mt-6 text-center text-gray-600">
-          登入後即可進行新增、編輯及刪除操作
-        </p>
-      )}
-
       <div className="bg-white p-4 rounded shadow">
         <h2 className="text-xl font-semibold mb-2">產品列表</h2>
         {products.length === 0 ? (
@@ -201,26 +177,28 @@ function ProductManager({ user, onTokenRefresh }) {
                     <span className="flex-1">
                       {product.name} - ${product.price}
                     </span>
-                    {token ? (
-                      <div className="space-x-2">
-                        <button
-                          onClick={() => handleEditProduct(product)}
-                          className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-                        >
-                          編輯
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProduct(product.id)}
-                          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                        >
-                          刪除
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">
-                        請登入以管理產品
-                      </span>
-                    )}
+                    <div className="space-x-2">
+                      {token ? (
+                        <>
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                          >
+                            編輯
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(product.id)}
+                            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                          >
+                            刪除
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-500">
+                          請登入以管理產品
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </li>
