@@ -5,25 +5,39 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"sync"
 
 	"go-book-learn/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
 
-var products []models.Product
-var nextID int
+// 全域變數模擬資料庫，並加入 Mutex 保護
+var (
+	products []models.Product
+	nextID   int
+	mu       sync.RWMutex // 使用讀寫鎖保護全域變數
+)
 
 // GetProducts godoc
 // @Summary 取得所有產品
-// @Description 返回所有產品列表，這是公開 API
+// @Description 返回所有產品列表，這是公開 API，若沒有產品則返回空陣列
 // @Tags 產品
 // @Produce json
 // @Success 200 {array} models.Product
 // @Router /products [get]
 func GetProducts(c *gin.Context) {
 	log.Println("[GET PRODUCTS] Fetching products")
-	c.JSON(http.StatusOK, products)
+	mu.RLock()
+	defer mu.RUnlock()
+	// 如果 products 為 nil，則返回空的切片，避免 JSON 序列化為 null
+	var prods []models.Product
+	if products == nil {
+		prods = []models.Product{}
+	} else {
+		prods = products
+	}
+	c.JSON(http.StatusOK, prods)
 }
 
 // GetProductByID godoc
@@ -44,6 +58,9 @@ func GetProductByID(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
 		return
 	}
+
+	mu.RLock()
+	defer mu.RUnlock()
 	for _, p := range products {
 		if p.ID == id {
 			c.JSON(http.StatusOK, p)
@@ -71,9 +88,13 @@ func CreateProduct(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤"})
 		return
 	}
+
+	mu.Lock()
 	newProduct.ID = nextID
 	nextID++
 	products = append(products, newProduct)
+	mu.Unlock()
+
 	log.Printf("[CREATE PRODUCT] Product ID %d created", newProduct.ID)
 	c.JSON(http.StatusCreated, newProduct)
 }
@@ -97,14 +118,18 @@ func UpdateProduct(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
 		return
 	}
+
 	var updatedProduct models.Product
 	if err := c.ShouldBindJSON(&updatedProduct); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入的產品資料有誤"})
 		return
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
 	for i, p := range products {
 		if p.ID == id {
-			updatedProduct.ID = p.ID
+			updatedProduct.ID = p.ID // 保留原有的 ID
 			products[i] = updatedProduct
 			c.JSON(http.StatusOK, updatedProduct)
 			return
@@ -130,6 +155,9 @@ func DeleteProduct(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "無效的產品 ID"})
 		return
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
 	for i, p := range products {
 		if p.ID == id {
 			products = slices.Delete(products, i, i+1)
